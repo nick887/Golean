@@ -184,7 +184,7 @@ string ""
 
 ### 2.8 基本数据类型转换
 
-所欲转换都需要需要显示转换
+- 所有转换都需要需要显示转换
 
 示例：
 
@@ -193,4 +193,58 @@ var a float64 = 10.000000001
 b := int8(a)
 fmt.Printf("%T %d", b, b)
 ```
+
+注意点：
+
+1. 原变量类型并未改变
+2. int64转换int32编译不报错，按溢出处理
+
+- 基本数据类型与string类型的转换(重要)
+
+1. `fmt.Sprintf("%参数",表达式)`返回转换后的字符串
+
+   ```java
+   	var num1 int = 99
+   	var num2 float64 = 10.1
+   	b := false
+   	myChar := 'a'
+   	var s string
+   
+   	//第一种方式
+   	s = fmt.Sprintf("%d", num1)
+   	fmt.Println(s)
+   	s = fmt.Sprintf("%f", num2)
+   	fmt.Println(s)
+   	s = fmt.Sprintf("%t", b)
+   	fmt.Println(s)
+   	s = fmt.Sprintf("%c", myChar)
+   	fmt.Println(s)
+   ```
+
+2. `strconv`包下的函数
+
+   ```go
+   	s = strconv.FormatInt(int64(num1), 10)
+   	fmt.Println(s)
+   //简单的转换函数
+   	s = strconv.Itoa(10)
+   	fmt.Println(s)
+   	//'f'代表格式,10代表精度,64表示表示是float64
+   	s = strconv.FormatFloat(num2, 'f', 10, 64)
+   	fmt.Println(s)
+   	s = strconv.FormatBool(b)
+   	fmt.Println(s)
+   ```
+
+- `string`转基本类型
+
+  ```go
+  	//s为0，false，False，FALSE都合法
+    s = "0"
+  	x, err := strconv.ParseBool(s)
+  	fmt.Println(x, err)
+  //其他可通过查文档找到
+  ```
+
+  
 
