@@ -630,3 +630,196 @@ a := admin{
 ## 9并发
 
 ### 9.1goroutine
+
+- 使用
+
+  ```go
+  go func() {
+    defer wg.Done()
+    for count:=0;count<3;count++ {
+      for  char:='A';char<'A'+26;char++{
+        fmt.Printf("%c",char)
+      }
+    }
+  }()
+  ```
+
+- `defer`关键字声明的函数会在函数返回时运行
+
+- `sync.WaitGroup`是等待队列，调用`wg.Wait()`方法后只有当等待数等于0时才停止，否则阻塞
+
+- `wg.Done()`使等待数-1
+
+- `wg.Add(2)`使等待数加2
+
+- `runtime.GOMAXPROCS(1)`设置逻辑处理器数量为1
+
+### 9.2竞争状态
+
+```go
+func incCounter(id int) {
+  defer wg.Done()
+
+  for count := 0;count<2;count++ {
+    value:=count
+    runtime.Gosched()
+    value++
+    counter=value
+  }
+}
+```
+
+过程:
+
+1. 进行goroutine1 value被赋值0，切换到goroutine2
+2. value被赋值0，切换到goroutine1
+3. value++，counter被赋值1
+4. value赋值1，切换goroutine2
+5. value++，counter被赋值1
+6. value赋值1，切换到goroutine1
+7. value++，counter被赋值2，结束，切换到goroutine2
+8. value++，counter被赋值2，结束
+
+- `runtime.Gosched`为切换goroutine
+- 检查竞争机制编译时加`-race`
+
+### 9.3锁机制
+
+#### 9.3.1原子函数
+
+- `atomic.AddInt64(&counter,1)`该方法强制同一时间只能有一个goroutine运行并执行加法操作
+- 安全读写操作`atomic.StoreInt64(&shutdown,1)`与`atomic.LoadInt64(&shutdown)`
+
+#### 9.3.2互斥锁
+
+通过`sync.Mutex`实现
+
+```go
+func incCounter(id int)  {
+	defer wg.Done()
+
+	for count:=0;count<2;count++ {
+		mutex.Lock()
+		{
+			value := counter
+			runtime.Gosched()
+			value++
+			counter = value
+		}
+		mutex.Unlock()
+	}
+}
+```
+
+- 大括号不是必须的
+
+### 9.4通道
+
+#### 9.4.1创建通道
+
+```go
+unbuffered:=make(chan int)
+buffered:=make(chan string,10)
+```
+
+- 向通道发送指针或者值需要用`<-`标识
+- 向通道发送值buffered <-"Go"`
+- 接收值`value:= <-buffered`
+
+#### 9.4.2无缓冲通道
+
+```go
+var (
+	wg sync.WaitGroup
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+func main() {
+	court:=make(chan int)
+
+	wg.Add(2)
+
+	go player("nick",court)
+	go player("wang",court)
+	court<-1
+	wg.Wait()
+}
+
+func player(name string,court chan int)  {
+	defer wg.Done()
+
+	for{
+		ball,ok:=<-court
+		if !ok{
+			fmt.Printf("Player %s Won\n",name)
+			return
+		}
+		n:=rand.Intn(100)
+		if n%13==0{
+			fmt.Printf("Player %s missed\n",name)
+
+			close(court)
+			return
+		}
+		fmt.Printf("Player %s Hit %d\n",name,ball)
+		ball++
+		court<-ball
+	}
+}
+```
+
+- 可见非缓存的通道会在未接受到信息时阻塞
+
+#### 9.4.3有缓冲通道
+
+示例程序:
+
+```go
+func main() {
+	tasks:=make(chan string,taskLoad)
+	wg.Add(numberGoroutines)
+	for gr := 1; gr <= numberGoroutines; gr++ {
+		go worker(tasks,gr)
+	}
+	for post:=1;post<=taskLoad;post++{
+		tasks<-fmt.Sprintf("Task : %d",post)
+	}
+
+	close(tasks)
+	wg.Wait()
+}
+
+func worker(tasks chan string, worker int) {
+	defer wg.Done()
+
+	for  {
+		task,ok:=<-tasks
+
+		if !ok{
+			fmt.Printf("Worker : %d Shutting Down \n",worker)
+			return
+		}
+		fmt.Printf("Worker : %d Started %s\n",worker,task)
+
+		sleep:=rand.Int63n(100)
+		time.Sleep(time.Duration(sleep)*time.Millisecond)
+
+		fmt.Printf("Worker : %d Completed %s\n",worker,task)
+	}
+}
+```
+
+若没有缓冲，假设此时四个工人接受任务后任务都未完成，通道中只有一个任务，此时发送task阻塞，若有通道，此时不阻塞，继续向通道中发送任务信息
+
+## 10并发模式
+
+### 10.1runner包
+
+### 10.2pool包
+
+### 10.3work包
+
+## 11标准库
+
